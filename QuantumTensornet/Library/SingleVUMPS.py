@@ -70,11 +70,12 @@ def Calc_HR(AR,HR,h,dtype,tol=1e-17):
     M = AR.shape[0]
     hr = Calc_hr(AR,h)
     er = Calc_right_energy(AR,h,dtype)
-    hr -= er * np.eye(M,M)
-    #HR = Calc_HR_PowerMethod(AR,hr)
-    #HR = Calc_HR_Inverse(AR,hr)
-    HR = Simple_Calc_HR_Linear(AR,HR,hr,dtype,tol)
-    return HR,er
+    hr_tilde = hr - er * np.eye(M,M)
+    #HR_new = SV.Calc_HR_PowerMethod(AR,hr_tilde)
+    #HR_new = Calc_HR_Inverse(AR,hr_tilde)
+    #HR_new = Simple_Calc_HR_Linear(AR,HR,hr_tilde,dtype,tol)
+    HR_new = Calc_HR_Linear(AR,HR,hr_tilde,dtype,tol)
+    return HR_new,er
 
 # Eq. (13)
 # use previous HL
@@ -82,11 +83,54 @@ def Calc_HL(AL,HL,h,dtype,tol=1e-17):
     M = AL.shape[0]
     hl = Calc_hl(AL,h)
     el = Calc_left_energy(AL,h,dtype)
-    hl -= el * np.eye(M,M)
-    #HL = Calc_HL_PowerMethod(AL,hl)
-    #HL = Calc_HL_Inverse(AL,hl)
-    HL = Simple_Calc_HL_Linear(AL,HL,hl,dtype,tol)
-    return HL,el
+    hl_tilde = hl - el * np.eye(M,M)
+    #HL_new = SV.Calc_HL_PowerMethod(AL,hl_tilde)
+    #HL_new = Calc_HL_Inverse(AL,hl_tilde)
+    #HL_new = Simple_Calc_HL_Linear(AL,HL,hl_tilde,dtype,tol)
+    HL_new = Calc_HL_Linear(AL,HL,hl_tilde,dtype,tol)
+    return HL_new,el
+
+# Solve Eq. (15) by using BIConjugate Gradient STABilized iteration
+def Calc_HR_Linear(AR,HR,hr_tilde,dtype,tol):
+    M = AR.shape[0]
+    _,vecL = MF.RightEigs(AR.transpose(2,1,0),dtype)
+    VL = vecL.reshape(M,M)
+    VL /= np.trace(VL)
+    T_ope = LinearSolver_ope(AR,VL,dtype)
+    HR_new,_ = sp.sparse.linalg.bicgstab(T_ope,hr_tilde.reshape(M*M),tol=0,atol=tol,x0=HR.reshape(M*M))
+    return HR_new.reshape(M,M)
+
+def Calc_HL_Linear(AL,HL,hl_tilde,dtype,tol):
+    M = AL.shape[0]
+    _,vecR = MF.RightEigs(AL,dtype)
+    VR = vecR.reshape(M,M)
+    VR /= np.trace(VR)
+    T_ope = LinearSolver_ope(AL.transpose(2,1,0),VR,dtype)
+    HL_new,_ = sp.sparse.linalg.bicgstab(T_ope,hl_tilde.reshape(M*M),tol=0,atol=tol,x0=HL.reshape(M*M))
+    return HL_new.reshape(M,M)
+    
+class LinearSolver_ope(sp.sparse.linalg.LinearOperator):
+    def __init__(self,A,L,dtype):
+        self.A = A
+        self.L = L
+        self.M = A.shape[0]
+        self.D = A.shape[1]
+        self.shape = [self.M * self.M, self.M * self.M]
+        self.dtype = dtype
+    def _matvec(self,Rvec):
+        R = Rvec.reshape(self.M,self.M)
+        ARR = np.tensordot(self.A,R,([2],[0]))
+        ARRA = np.tensordot(ARR,np.conj(self.A),([1,2],[1,2]))
+        R = R - ARRA + np.eye(self.M) * np.inner(self.L.reshape(self.M*self.M),Rvec)
+        return R.reshape(self.M*self.M)
+    def _rmatvec(self,Rvec):
+        R = Rvec.reshape(self.M,self.M)
+        AT = self.A.transpose(2,1,0)
+        ARR = np.tensordot(np.conj(AT),R,([2],[0]))
+        ARRA = np.tensordot(ARR,AT,([1,2],[1,2]))
+        R = R - ARRA + np.conj(self.L) * np.trace(R)
+        return R.reshape(self.M*self.M)
+
 
 # Eq. (15)
 def Simple_Calc_HR_Linear(AR,HR,hr,dtype,tol):
