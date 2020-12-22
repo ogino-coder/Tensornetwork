@@ -164,6 +164,80 @@ def Calc_HL_PowerMethod(AL,hl,tol=1e-15,max_iter=10000):
 
 # Line 6 in Algorithm 2
 # Calculate updated AC from Eq. (11)
+def Next_AC(AC,AR,AL,HR,HL,h,dtype):
+    M = AR.shape[0]; D = AR.shape[1]
+    ALAL = np.tensordot(AL,np.conj(AL),([0],[0]))
+    Block1 = np.tensordot(ALAL,h,([0,2],[0,2]))
+    Block3 = np.einsum("ab,cd -> abcd",HL,np.eye(D))
+    ARAR = np.tensordot(AR,np.conj(AR),([2],[2]))
+    Block2 = np.tensordot(ARAR,h,([1,3],[1,3]))
+    Block4 = np.einsum("ab,cd -> abcd",HR,np.eye(D))
+    B13 = Block1 + Block3
+    B24 = Block2 + Block4
+    AC_ope = Next_AC_ope(B13,B24,dtype)
+    val,vec = sp.sparse.linalg.eigs(AC_ope,k=1,v0=AC.reshape(M*D*M))
+    if ( dtype == np.dtype("float") ):
+        vec = vec.real; val = val.real
+    vec /= vec[0,0]/np.abs(vec[0,0])
+    AC_next = vec.reshape(M,D,M)
+    return AC_next
+    
+class Next_AC_ope(sp.sparse.linalg.LinearOperator):
+    def __init__(self,B13,B24,dtype):
+        self.B13 = B13
+        self.B24 = B24
+        self.D = B13.shape[2]
+        self.M = B13.shape[0]
+        self.shape = [self.M * self.D *self.M, self.M * self.D * self.M]
+        self.dtype = dtype
+    def _matvec(self,ACvec):
+        AC_next = EffectiveHamiltonian_HAC(ACvec.reshape(self.M,self.D,self.M),self.B13,self.B24)
+        return AC_next
+
+# Eq. (11)
+def EffectiveHamiltonian_HAC(AC,B13,B24):
+    ACB13 = np.tensordot(B13,AC,([0,2],[0,1]))
+    ACB24 = np.tensordot(AC,B24,([1,2],[2,0])).transpose(0,2,1)
+    return ACB13 + ACB24
+
+# Line 7 in Algorithm 2
+# Calculate updated C from Eq. (16)
+def Next_C(C,AR,AL,HR,HL,h,dtype):
+    M = AR.shape[0]; D = AR.shape[1]
+    ALAL = np.tensordot(AL,np.conj(AL),([0],[0]))
+    ALALh = np.tensordot(ALAL,h,([0,2],[0,2]))
+    ARAR = np.tensordot(AR,np.conj(AR),([2],[2]))
+    C_ope = Next_C_ope(HR,HL,ARAR,ALALh,dtype)
+    val,vec = sp.sparse.linalg.eigs(C_ope,k=1,v0=C.reshape(M*M))
+    if ( dtype == np.dtype("float") ):
+        vec = vec.real; val = val.real
+    vec /= vec[0,0]/np.abs(vec[0,0])
+    C_next = vec.reshape(M,M)
+    return C_next
+    
+class Next_C_ope(sp.sparse.linalg.LinearOperator):
+    def __init__(self,HR,HL,ARAR,ALALh,dtype):
+        self.HR = HR
+        self.HL = HL
+        self.ARAR = ARAR
+        self.ALALh = ALALh
+        self.M = HR.shape[0]
+        self.shape = [self.M * self.M, self.M * self.M]
+        self.dtype = dtype
+    def _matvec(self,Cvec):
+        C_next = EffectiveHamiltonian_HC(Cvec.reshape(self.M,self.M),self.HR,self.HL,self.ARAR,self.ALALh)
+        return C_next
+
+# Eq. (16)
+def EffectiveHamiltonian_HC(C,HR,HL,ARAR,ALALh):
+    ALALhC = np.tensordot(ALALh,C,([0],[0]))
+    Block1 = np.tensordot(ALALhC,ARAR,([3,1,2],[0,1,3]))
+    Block2 = np.tensordot(HL,C,([0],[0]))
+    Block3 = np.tensordot(C,HR,([1],[0]))
+    return Block1 + Block2 + Block3
+
+# Line 6 in Algorithm 2
+# Calculate updated AC from Eq. (11)
 def Simple_Next_AC(AC,AR,AL,HR,HL,h,dtype):
     M = AR.shape[0]; D = AR.shape[1]
     HAC = Simple_EffectiveHamiltonian_HAC(AR,AL,HR,HL,h)
