@@ -34,7 +34,8 @@ def RightLeftEigs(A,dtype=np.dtype("float"),Normalized=False):
 def Normalize(A,dtype=np.dtype("float")):
     valR,vecR = MF.RightEigs(A,dtype)
     #valR,vecR = MF.Simple_RightEigs(A,dtype)
-    A /= ( valR ** 0.5 )
+    # A /= ( valR ** 0.5 )
+    A /= ( np.sqrt(abs(valR)) )
     return A
 
 def ExpectationValue(A,O,VR,VL):
