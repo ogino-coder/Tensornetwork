@@ -219,7 +219,7 @@ def Next_AC(AC,AR,AL,HR,HL,h,dtype):
     B13 = Block1 + Block3
     B24 = Block2 + Block4
     AC_ope = Next_AC_ope(B13,B24,dtype)
-    val,vec = sp.sparse.linalg.eigs(AC_ope,k=1,v0=AC.reshape(M*D*M))
+    val,vec = sp.sparse.linalg.eigs(AC_ope,k=1,which="SR",v0=AC.reshape(M*D*M))
     if ( dtype == np.dtype("float") ):
         vec = vec.real; val = val.real
     vec /= vec[0,0]/np.abs(vec[0,0])
@@ -252,7 +252,7 @@ def Next_C(C,AR,AL,HR,HL,h,dtype):
     ALALh = np.tensordot(ALAL,h,([0,2],[0,2]))
     ARAR = np.tensordot(AR,np.conj(AR),([2],[2]))
     C_ope = Next_C_ope(HR,HL,ARAR,ALALh,dtype)
-    val,vec = sp.sparse.linalg.eigs(C_ope,k=1,v0=C.reshape(M*M))
+    val,vec = sp.sparse.linalg.eigs(C_ope,k=1,which="SR",v0=C.reshape(M*M))
     if ( dtype == np.dtype("float") ):
         vec = vec.real; val = val.real
     vec /= vec[0,0]/np.abs(vec[0,0])

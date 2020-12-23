@@ -9,9 +9,9 @@ def MixedCanonicalForm(A,dtype=np.dtype("float"),Normalized=False):
         Normalized = True
     VR,VL = RightLeftEigs(A,dtype,Normalized)
     DR,WR = sp.linalg.eigh(VR)
-    X = np.einsum("ab,bc -> ac",WR,np.diag(np.sqrt(DR)))
+    X = np.einsum("ab,bc -> ac",WR,np.diag(np.sqrt(abs(DR))))
     DL,WL = sp.linalg.eigh(VL)
-    YT = np.einsum("ab,bc -> ac",WL,np.diag(np.sqrt(DL)))
+    YT = np.einsum("ab,bc -> ac",WL,np.diag(np.sqrt(abs(DL))))
     AC = np.einsum("ab,bsc,cd -> asd",YT.T,A,X)
     C = np.einsum("ab,bc -> ac",YT.T,X)
     AR = np.einsum("ab,bsc,cd -> asd",np.linalg.inv(X),A,X)
