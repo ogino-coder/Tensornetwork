@@ -208,7 +208,8 @@ def Calc_HL_PowerMethod(AL,hl,tol=1e-15,max_iter=10000):
 
 # Line 6 in Algorithm 2
 # Calculate updated AC from Eq. (11)
-def Next_AC(AC,AR,AL,HR,HL,h,dtype):
+# Use the privious AC as the initial state
+def Next_AC(AC,AR,AL,HR,HL,h,dtype,tol=0):
     M = AR.shape[0]; D = AR.shape[1]
     ALAL = np.tensordot(AL,np.conj(AL),([0],[0]))
     Block1 = np.tensordot(ALAL,h,([0,2],[0,2]))
@@ -219,7 +220,7 @@ def Next_AC(AC,AR,AL,HR,HL,h,dtype):
     B13 = Block1 + Block3
     B24 = Block2 + Block4
     AC_ope = Next_AC_ope(B13,B24,dtype)
-    val,vec = sp.sparse.linalg.eigs(AC_ope,k=1,which="SR",v0=AC.reshape(M*D*M))
+    val,vec = sp.sparse.linalg.eigs(AC_ope,k=1,which="SR",v0=AC.reshape(M*D*M),tol=tol)
     if ( dtype == np.dtype("float") ):
         vec = vec.real; val = val.real
     vec /= vec[0,0]/np.abs(vec[0,0])
@@ -239,6 +240,7 @@ class Next_AC_ope(sp.sparse.linalg.LinearOperator):
         return AC_next
 
 # Eq. (11)
+# To reduce the computational cost, we add the first term and the third term, and the second term and the fourth term in advance
 def EffectiveHamiltonian_HAC(AC,B13,B24):
     ACB13 = np.tensordot(B13,AC,([0,2],[0,1]))
     ACB24 = np.tensordot(AC,B24,([1,2],[2,0])).transpose(0,2,1)
@@ -246,13 +248,14 @@ def EffectiveHamiltonian_HAC(AC,B13,B24):
 
 # Line 7 in Algorithm 2
 # Calculate updated C from Eq. (16)
-def Next_C(C,AR,AL,HR,HL,h,dtype):
+# Use the privious C as the initial state
+def Next_C(C,AR,AL,HR,HL,h,dtype,tol=0):
     M = AR.shape[0]; D = AR.shape[1]
     ALAL = np.tensordot(AL,np.conj(AL),([0],[0]))
     ALALh = np.tensordot(ALAL,h,([0,2],[0,2]))
     ARAR = np.tensordot(AR,np.conj(AR),([2],[2]))
     C_ope = Next_C_ope(HR,HL,ARAR,ALALh,dtype)
-    val,vec = sp.sparse.linalg.eigs(C_ope,k=1,which="SR",v0=C.reshape(M*M))
+    val,vec = sp.sparse.linalg.eigs(C_ope,k=1,which="SR",v0=C.reshape(M*M),tol=tol)
     if ( dtype == np.dtype("float") ):
         vec = vec.real; val = val.real
     vec /= vec[0,0]/np.abs(vec[0,0])
