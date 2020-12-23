@@ -1,3 +1,7 @@
+##### Caution !!! ################################################################
+# The convergence of the gradient norm |B| is worse than Ref. [1].
+##################################################################################
+
 ##################################################################################
 # Reference
 # [1] Phys. Rev. B 97, 045145 (2018)
@@ -125,7 +129,6 @@ class LinearSolver_ope(sp.sparse.linalg.LinearOperator):
         ARRA = np.tensordot(ARR,AT,([1,2],[1,2]))
         R = R - ARRA + np.conj(self.L) * np.trace(R)
         return R.reshape(self.M*self.M)
-
 
 # Eq. (15)
 def Simple_Calc_HR_Linear(AR,HR,hr,dtype,tol):
